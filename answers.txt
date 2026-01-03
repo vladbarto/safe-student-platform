@@ -1,0 +1,4 @@
+Answers - Vlad Bartolomei
+* What vulnerabilities can there be in that function 
+
+* What specific mitigation you used for each of the vulnerabilities listed above
