@@ -23,6 +23,8 @@
         }
         // Beware - this function creates the folder with 0777 permissions (maximum permissions). 
         // We use it here like this because it's easy but don't do this in a production environment.
-        mkdir($user_folder);    
+        //mkdir($user_folder);  
+        if(!mkdir($user_folder, 0777, true))
+            die(error_get_last()['message']);
     }
 ?>

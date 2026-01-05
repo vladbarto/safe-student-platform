@@ -1,7 +1,4 @@
 <?php
-// Source - https://stackoverflow.com/a
-// Posted by Senador, modified by community. See post 'Timeline' for change history
-// Retrieved 2025-12-15, License - CC BY-SA 4.0
 
 function debug_to_console($data) {
     $output = $data;
@@ -9,6 +6,23 @@ function debug_to_console($data) {
         $output = implode(',', $output);
 
     echo "<script>console.log('Debug Objects: " . $output . "' );</script>";
+}
+
+function csrf_origin_check()
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        return;
+    }
+
+    if (!isset($_SERVER['HTTP_ORIGIN'])) {
+        http_response_code(403);
+        exit;
+    }
+
+    if (parse_url($_SERVER['HTTP_ORIGIN'], PHP_URL_HOST) !== $_SERVER['HTTP_HOST']) {
+        http_response_code(403);
+        exit;
+    }
 }
 
     /* 
@@ -46,6 +60,12 @@ function debug_to_console($data) {
     */
     function query_db_login($username, $password) 
     {
+        csrf_origin_check();
+        
+        // XSS protection: strip tags
+        $username = strip_tags($username);
+        $password = strip_tags($password);
+
         $conn = get_mysqli();
         $found = null;
 
@@ -59,6 +79,8 @@ function debug_to_console($data) {
         if ($found != null) {
             $found = $username;
         }
+
+        session_regenerate_id(true);
 
         $stmt->close();
         $conn->close();
@@ -109,21 +131,17 @@ function debug_to_console($data) {
     */
     function add_message_for_user($username, $message) 
     {
+        csrf_origin_check();
+
+        // XSS protection: strip_tags
+        $message = htmlspecialchars(strip_tags($message), ENT_QUOTES, 'UTF-8');
+
         $conn = get_mysqli();
         $results = array();
-        debug_to_console(session_decode($_SESSION["cookie"]));
+
         $stmt = $conn->prepare("INSERT INTO messages (username, `message`) VALUES (?, ?)");
         $stmt->bind_param("ss", $username, $message);
         $stmt->execute();
-
-        // $result = $stmt->get_result();
-        // $found = $result->fetch_object();
-
-        // if ($found != null) {
-        //     echo "SUCCES\n";
-        // } else {
-        //     debug_to_console("problema");
-        // }
 
         $conn->close();
     }
@@ -157,6 +175,8 @@ function debug_to_console($data) {
     */
     function add_photo_path_to_user($username, $file_userphoto) 
     {
+        csrf_origin_check();
+
         $conn = get_mysqli();
 
         $stmt = $conn->prepare("UPDATE users SET file_userphoto = ? WHERE username = ?;");
@@ -211,7 +231,18 @@ function debug_to_console($data) {
     */
     function get_memo_content_for_user($username, $memoname) 
     {
+        $path = "users/" . $username . "/" . basename($memoname);
 
+        if(!is_file($path)) {
+            return "No such file!";
+        }
+
+        $content = file_get_contents($path);
+        if($content === false) {
+            return "No such file!";
+        }
+
+        return $content;
     }
 
     /* 

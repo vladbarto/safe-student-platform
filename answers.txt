@@ -1,4 +1,68 @@
 Answers - Vlad Bartolomei
-* What vulnerabilities can there be in that function 
+1* What vulnerabilities can there be in that function
+2* What specific mitigation you used for each of the vulnerabilities listed above
+3* What vulnerabilities can still there be in that function after the fix
 
-* What specific mitigation you used for each of the vulnerabilities listed above
+A. function query_db_login($username, $password)
+    1* unauthorized access by sql injection; reflected XSS (username and password fields are susceptible to 
+    <script>alert(document.cookie)</script> injection); CSRF attack
+    2* Prepaired statements so that SQL injection becomes impossible; stripped the tags from input (username and password) 
+    with method strip_tags. I observed that the scripts are triggered nevertheless or that a common edge case is "><script>alert(1)<script>
+    and I decided to also get the previously processed input to a parsing to htmlspecialchars, so that a script loses its effects.
+    For instance in the DB < = &lt, and it is quite literally persisted like that. The text is rendered as < (following the same example).
+    To prevent CSRF I call the method csrf_origin_check():
+
+function csrf_origin_check():
+
+This function checks all POST requests to ensure they come from the same site. It first verifies that the request method is POST, 
+then checks that the browser included an Origin header, and finally compares the host in Origin with the server’s host.
+If any of these checks fail, the request is blocked with a 403 error.
+
+    Thing is that only POST requests change system states or other things (like submit a photo or a message or transfer some money).
+
+    .... I didn't quite call already at this point the method htmlspecialchars since it induces me problems, but for the other two add_* method it just does the trick! I wanted to describe the solution here.
+
+    3* none
+
+B. function get_message_rows() 
+    1* none (not even path traversal)
+    2* nevertheless I used prepared statements for the sake of using it.
+    3* none
+
+C. function add_message_for_user($username, $message)
+    1* same as A., sql injection for executing other scripts SQL-related, like drop table or echo full db; CSRF attacks; XSS stored.
+    2* same as A., prepared statement, csrf_origin_check(), htmlspecialchars(strip_tags($message), ENT_QUOTES, 'UTF-8');
+    3* The thing with csrf_origin_check is that Origin is only part of the solution. Due to the constraint of modifying things only
+    in student_delivery.php, I could not implement a token-based csrf check , which is the only way to be fully sure a request 
+    came from your site by including a secret CSRF generated token that the attacker cannot guess, which I would have done (generating bit) by 
+    calling $_SESSION['token'] = bin2hex(random_bytes(35)); (https://www.phptutorial.net/php-tutorial/php-csrf/ ). The same is valid
+    for add_photo_path_to_user() function
+
+D. function is_valid_image($image_path)
+    1* risk of loading any file. If the file is unreasonably big, it could crash the server. Also:
+    <?php 
+        $path = get_photo_path_for_user($_SESSION['cookie']); 
+        if ($path != null)
+        {
+            echo "<img src='" . $path . "' width=50 height=50></img>";
+        }
+    ?>
+    this snippet of code is from index.php. There is a risk of "php injection" so if the path (i.e. the photo name) is somehow 
+    carefully crafted (following the idea of SQL Injection) to inject a script that prints the document.cookie or whatever else, the
+    user is cooked! 
+    2* because computing getimagesize() can generate a lot of false positives and it is not reliable (according to the internet and
+    the PHP documentation), we used exif_imagetype, which checks the signature of the file.
+    3* For script injection i am thinking of some edge case like "ceva.jpeg ; alert(1);#" (without the quotation marks). This 
+    doesn't exactly work, but it is still a possibility.
+    Solution: reject if metacharacters like ; or # or keywords like alert appear.
+
+E. function add_photo_path_for_user($username, $message) 
+    1* same issues and solutions as for add_message_for_user
+
+F. function get_photo_path_for_user($username) 
+    problem already covered at is_valid_image
+
+G. function get_memo_content_for_user($username, $memoname) 
+    I find that no issue can be posed by this method.
+
+H. function get_language_php($language)
