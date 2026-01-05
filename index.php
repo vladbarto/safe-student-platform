@@ -12,6 +12,7 @@
     if (isset($_GET["language"]))
     {
         $temp_language_path = get_language_php($_GET["language"]);
+        
         if ($temp_language_path != null)
         {
             $language_path = $temp_language_path;

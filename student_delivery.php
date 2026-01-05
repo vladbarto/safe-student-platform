@@ -231,6 +231,16 @@ function csrf_origin_check()
     */
     function get_memo_content_for_user($username, $memoname) 
     {
+        $memoname = rawurldecode($memoname);
+
+        if (preg_match('/[\/\\\\]/', $memoname)) {
+            return "No such file!";
+        }
+
+        if (!preg_match('/^[a-zA-Z0-9_.-]+$/', $memoname)) {
+            return "No such file!";
+        }
+        
         $path = "users/" . $username . "/" . basename($memoname);
 
         if(!is_file($path)) {
@@ -265,11 +275,17 @@ function csrf_origin_check()
     */
     function get_language_php($language)
     {
-        $language_path = "language/" . $language . ".php";
+        $language_path = "language/" . basename($language) . ".php";
+
+        if ("en" !== $language && "ro" !== $language) {
+            return null;
+        }
+        
         if (is_file($language_path))
         {
             return $language_path;
         }
+
         return null;
     }
 ?>

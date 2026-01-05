@@ -64,5 +64,22 @@ F. function get_photo_path_for_user($username)
 
 G. function get_memo_content_for_user($username, $memoname) 
     I find that no issue can be posed by this method.
+    ... except for the memoname: The function was vulnerable to path traversal because encoded directory separators (like %5c) 
+    could bypass basename(). The mitigation decodes input first, rejects directory separators explicitly, 
+    and enforces a strict filename whitelist.
 
 H. function get_language_php($language)
+{
+    $language_path = "language/" . $language . ".php";
+    if (is_file($language_path))
+    {
+        return $language_path;
+    }
+    return null;
+}
+
+    As it is now, any file can be submitted as long as it passes the is_file test (— Tells whether the filename is a regular file). 
+    We don't want that, since the a malicious might be triggered. Also any file can be accessed with path traversal.
+    Therefore as protection measures we sanitize the input (do a basename over $language) and also define a whitelist, so that 
+    we can tell the server to accept only already existing language php files (en.php and ro.php);
+
